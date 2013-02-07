@@ -1,47 +1,58 @@
+import language.postfixOps
 /** Binary trees */
 sealed abstract class Tree[+T] {
   def isSymmetric = {
     def isMirrorOf[A, B](l: Tree[A], r: Tree[B]): Boolean = (l, r) match {
       case (End, End) => true
       case (Node(_, l1, r1), Node(_, l2, r2)) => isMirrorOf(l1, r2) && isMirrorOf(r1, l2)
+      case (PositionedNode(_, l1, r1, _, _), PositionedNode(_, l2, r2, _, _)) => isMirrorOf(l1, r2) && isMirrorOf(r1, l2)
       case _ => false
     }
     this match {
       case End => true
       case Node(_, l, r) => isMirrorOf(l, r)
+      case PositionedNode(_, l, r, _, _) => isMirrorOf(l, r)
     }
   }
 
   def addValue[U >: T <% Ordered[U]](x: U): Tree[U] = this match {
     case End => Node(x)
     case Node(value, l, r) => if (value < x) Node(value, l, r.addValue(x)) else Node(value, l.addValue(x), r)
+    case PositionedNode(value, l, r, x0, y0) => if (value < x) PositionedNode(value, l, r.addValue(x), x0, y0) else PositionedNode(value, l.addValue(x), r, x0, y0)
   }
 
   def nodeCount: Int = this match {
     case End => 0
     case Node(_, l, r) => 1 + l.nodeCount + r.nodeCount
+    case PositionedNode(_, l, r, _, _) => 1 + l.nodeCount + r.nodeCount
   }
   
   def leafCount: Int = this match {
-    case Node(_, End, End) => 1
+    case Node(_, End, End) | PositionedNode(_, End, End, _, _) => 1
     case Node(_, l, r) => l.leafCount + r.leafCount
+    case PositionedNode(_, l, r, _, _) => l.leafCount + r.leafCount
     case _ => 0
   }
   
   def leafList: List[T] = this match {
     case End => List()
     case Node(value, End, End) => List(value)
+    case PositionedNode(value, End, End, _, _) => List(value)
     case Node(_, l, r) => l.leafList ::: r.leafList
+    case PositionedNode(_, l, r, _, _) => l.leafList ::: r.leafList
   }
   
   def internalList: List[T] = this match {
-    case End | Node(_, End, End) => List()
+    case End | Node(_, End, End) | PositionedNode(_, End, End, _, _) => List()
     case Node(value, l, r) => value :: l.internalList ::: r.internalList
+    case PositionedNode(value, l, r, _, _) => value :: l.internalList ::: r.internalList
   }
   
   def atLevel(n: Int): List[T] = (n, this) match {
     case (1, Node(value, _, _)) => List(value)
+    case (1, PositionedNode(value, _, _, _, _)) => List(value)
     case (n, Node(_, l, r)) => l.atLevel(n - 1) ::: r.atLevel(n - 1)
+    case (n, PositionedNode(_, l, r, _, _)) => l.atLevel(n - 1) ::: r.atLevel(n - 1)
     case _ => Nil
   }
   
@@ -57,15 +68,21 @@ sealed abstract class Tree[+T] {
 }
 
 case class Node[+T](value: T, left: Tree[T], right: Tree[T]) extends Tree[T] {
-  override def toString = "T(" + value.toString + " " + left.toString + " " + right.toString + ")"
+  override def toString = (left, right) match {
+    case (End, End) => value.toString
+    case _ => value.toString + "(" + left.toString + "," + right.toString + ")"
+  }
 }
 
-case class PositionedNode[+T](override val value: T, override val left: Tree[T], override val right: Tree[T], x: Int, y: Int) extends Node[T](value, left, right) {
-  override def toString = "T[" + x.toString + "," + y.toString + "](" + value.toString + " " + left.toString + " " + right.toString + ")"
+case class PositionedNode[+T](value: T, left: Tree[T], right: Tree[T], x: Int, y: Int) extends Tree[T] {
+  override def toString = (left, right) match {
+    case (End, End) => value.toString + "[" + x + "," + y + "]"
+    case _ => value.toString + "[" + x + "," + y + "](" + left.toString + "," + right.toString + ")"
+  }
 }
 
 case object End extends Tree[Nothing] {
-  override def toString = "."
+  override def toString = ""
 }
 
 object Node {
@@ -126,7 +143,7 @@ object Tree {
 
 // println(Tree.cBalanced(4, "x"))
 // println(Node('a', Node('b'), Node('c')).isSymmetric)
-// println(Tree.fromList(List(3, 2, 5, 7, 1)))
+println(Tree.fromList(List(3, 2, 5, 7, 1)))
 // println(Tree.fromList(List(5, 3, 18, 1, 4, 12, 21)).isSymmetric) // true
 // println(Tree.fromList(List(3, 2, 5, 7, 4)).isSymmetric) // false
 // println(Tree.symmetricBalancedTrees(5, "x"))
@@ -137,6 +154,5 @@ object Tree {
 // println(Node('a', Node('b'), Node('c', Node('d'), Node('e'))).internalList)
 // println(Node('a', Node('b'), Node('c', Node('d'), Node('e'))).atLevel(2))
 // println(Tree.completeBinaryTree(6, "x"))
-println(Node('a', Node('b', End, Node('c')), Node('d')).layoutBinaryTree)
-println(Tree.fromList(List('n','k','m','c','a','h','g','e','u','p','s','q')).layoutBinaryTree)
-//println(Node('a', Node('b', End, Node('c')), Node('d')).layoutBinaryTree2)
+// println(Node('a', Node('b', End, Node('c')), Node('d')).layoutBinaryTree)
+// println(Tree.fromList(List('n','k','m','c','a','h','g','e','u','p','s','q')).layoutBinaryTree)
